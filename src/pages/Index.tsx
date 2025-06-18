@@ -1,11 +1,31 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from 'react';
+import { Navigation } from '@/components/Navigation';
+import { NewRequest } from '@/components/NewRequest';
+import { RequestsView } from '@/components/RequestsView';
+import { AddSoldier } from '@/components/AddSoldier';
 
 const Index = () => {
+  const [currentPage, setCurrentPage] = useState('new-request');
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'new-request':
+        return <NewRequest />;
+      case 'requests':
+        return <RequestsView />;
+      case 'add-soldier':
+        return <AddSoldier />;
+      default:
+        return <NewRequest />;
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-7xl mx-auto">
+        <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />
+        {renderPage()}
       </div>
     </div>
   );
