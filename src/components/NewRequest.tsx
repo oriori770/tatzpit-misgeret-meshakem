@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,433 +6,352 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from "@radix-ui/react-icons"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/hooks/useData';
-import { Soldier, Request } from '@/types';
-import { Copy } from 'lucide-react';
+import { Soldier, Request, SingleDayRequest, MultiDayRequest, ReplacementRequest, DepartureRequest } from '@/types';
+import { generateMessage } from '@/utils';
 
 export function NewRequest() {
   const { soldiers, addRequest, getSoldierById } = useData();
   const { toast } = useToast();
-  
-  const [selectedSoldierId, setSelectedSoldierId] = useState('');
-  const [selectedReplacedSoldierId, setSelectedReplacedSoldierId] = useState('');
+
   const [requestType, setRequestType] = useState<'single-day' | 'multi-day' | 'replacement' | 'departure'>('single-day');
-  const [formData, setFormData] = useState<any>({
-    commanderName: '',
-    arrivalDate: '',
-    departureDate: '',
-    baseName: '',
-    wasInBaseBefore: false,
-    requiresApproval: false,
-    replacedSoldier: {
-      departureDate: '',
-    },
-  });
+  const [selectedSoldier, setSelectedSoldier] = useState<Soldier | null>(null);
+  const [commanderName, setCommanderName] = useState('');
+  const [arrivalDate, setArrivalDate] = useState<string | undefined>('');
+  const [departureDate, setDepartureDate] = useState<string | undefined>('');
+  const [requiresApproval, setRequiresApproval] = useState(false);
+  const [baseName, setBaseName] = useState('');
+  const [wasInBaseBefore, setWasInBaseBefore] = useState(false);
+  const [replacedSoldierId, setReplacedSoldierId] = useState('');
+  const [replacedSoldierDepartureDate, setReplacedSoldierDepartureDate] = useState('');
   const [generatedMessage, setGeneratedMessage] = useState('');
 
-  const selectedSoldier = selectedSoldierId ? getSoldierById(selectedSoldierId) : null;
-  const selectedReplacedSoldier = selectedReplacedSoldierId ? getSoldierById(selectedReplacedSoldierId) : null;
-
-  const generateMessage = () => {
-    if (!selectedSoldier || !formData.commanderName) {
+  const handleSubmit = () => {
+    if (!selectedSoldier) {
       toast({
         title: "שגיאה",
-        description: "אנא בחר חייל ומלא את שם המפקד",
+        description: "יש לבחור חייל",
         variant: "destructive",
       });
       return;
     }
 
-    if (requestType === 'replacement' && !selectedReplacedSoldier) {
+    if (!commanderName.trim()) {
       toast({
-        title: "שגיאה",
-        description: "אנא בחר את החייל היוצא עבור בקשת החלפה",
+        title: "שגיאה", 
+        description: "יש למלא שם מפקד",
         variant: "destructive",
       });
       return;
     }
 
-    let message = '';
-    const currentDate = new Date().toLocaleDateString('he-IL');
-
-    switch (requestType) {
-      case 'single-day':
-        message = `בקשה להצטרפות חד-יומית ללא לינה
-
-תאריך: ${currentDate}
-מפקד מבקש: ${formData.commanderName}
-
-פרטי החייל:
-שם: ${selectedSoldier.fullName}
-מ.א.: ${selectedSoldier.personalNumber}
-דרגה: ${selectedSoldier.rank}
-תפקיד: ${selectedSoldier.position}
-מדור: ${selectedSoldier.department}
-${selectedSoldier.team ? `צוות: ${selectedSoldier.team}` : ''}
-
-פרטי הבקשה:
-תאריך הגעה: ${formData.arrivalDate}
-שם הבסיס: ${formData.baseName}
-${formData.wasInBaseBefore ? 'היה בבסיס בעבר: כן' : 'היה בבסיס בעבר: לא'}
-${formData.requiresApproval ? 'נדרש אישור: כן' : 'נדרש אישור: לא'}
-${selectedSoldier.requiresApproval ? 'נדרש אישור לירקוניר: כן' : 'נדרש אישור לירקוניר: לא'}
-${selectedSoldier.hasIntelligenceWatch ? 'קיים משמר אמ"ן: כן' : 'קיים משמר אמ"ן: לא'}
-${selectedSoldier.hasAllergy ? 'יש אלרגיה: כן' : 'יש אלרגיה: לא'}`;
-        break;
-
-      case 'multi-day':
-        message = `בקשה להצטרפות עם לינה למספר ימים
-
-תאריך: ${currentDate}
-מפקד מבקש: ${formData.commanderName}
-
-פרטי החייל:
-שם: ${selectedSoldier.fullName}
-מ.א.: ${selectedSoldier.personalNumber}
-דרגה: ${selectedSoldier.rank}
-תפקיד: ${selectedSoldier.position}
-מדור: ${selectedSoldier.department}
-${selectedSoldier.team ? `צוות: ${selectedSoldier.team}` : ''}
-
-פרטי הבקשה:
-תאריך הגעה: ${formData.arrivalDate}
-תאריך עזיבה: ${formData.departureDate}
-שם הבסיס: ${formData.baseName}
-${formData.wasInBaseBefore ? 'היה בבסיס בעבר: כן' : 'היה בבסיס בעבר: לא'}
-${formData.requiresApproval ? 'נדרש אישור: כן' : 'נדרש אישור: לא'}
-${selectedSoldier.requiresApproval ? 'נדרש אישור לירקוניר: כן' : 'נדרש אישור לירקוניר: לא'}
-${selectedSoldier.hasIntelligenceWatch ? 'קיים משמר אמ"ן: כן' : 'קיים משמר אמ"ן: לא'}
-${selectedSoldier.hasAllergy ? 'יש אלרגיה: כן' : 'יש אלרגיה: לא'}`;
-        break;
-
-      case 'replacement':
-        message = `בקשה להצטרפות עם לינה והחלפה של חייל אחר
-
-תאריך: ${currentDate}
-מפקד מבקש: ${formData.commanderName}
-
-פרטי החייל הנכנס:
-שם: ${selectedSoldier.fullName}
-מ.א.: ${selectedSoldier.personalNumber}
-דרגה: ${selectedSoldier.rank}
-תפקיד: ${selectedSoldier.position}
-מדור: ${selectedSoldier.department}
-${selectedSoldier.team ? `צוות: ${selectedSoldier.team}` : ''}
-
-פרטי החייל היוצא:
-שם: ${selectedReplacedSoldier?.fullName}
-מ.א.: ${selectedReplacedSoldier?.personalNumber}
-דרגה: ${selectedReplacedSoldier?.rank}
-תפקיד: ${selectedReplacedSoldier?.position}
-תאריך עזיבה: ${formData.replacedSoldier.departureDate}
-
-פרטי הבקשה:
-תאריך הגעה: ${formData.arrivalDate}
-תאריך עזיבה: ${formData.departureDate}
-שם הבסיס: ${formData.baseName}
-${formData.wasInBaseBefore ? 'היה בבסיס בעבר: כן' : 'היה בבסיס בעבר: לא'}
-${formData.requiresApproval ? 'נדרש אישור: כן' : 'נדרש אישור: לא'}
-${selectedSoldier.requiresApproval ? 'נדרש אישור לירקוניר: כן' : 'נדרש אישור לירקוניר: לא'}
-${selectedSoldier.hasIntelligenceWatch ? 'קיים משמר אמ"ן: כן' : 'קיים משמר אמ"ן: לא'}
-${selectedSoldier.hasAllergy ? 'יש אלרגיה: כן' : 'יש אלרגיה: לא'}`;
-        break;
-
-      case 'departure':
-        message = `בקשה לעזיבת בסיס
-
-תאריך: ${currentDate}
-מפקד מבקש: ${formData.commanderName}
-
-פרטי החייל:
-שם: ${selectedSoldier.fullName}
-מ.א.: ${selectedSoldier.personalNumber}
-דרגה: ${selectedSoldier.rank}
-תפקיד: ${selectedSoldier.position}
-מדור: ${selectedSoldier.department}
-${selectedSoldier.team ? `צוות: ${selectedSoldier.team}` : ''}
-
-פרטי הבקשה:
-שם הבסיס: ${formData.baseName}`;
-        break;
-    }
-
-    setGeneratedMessage(message);
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedMessage);
-    toast({
-      title: "הועתק בהצלחה",
-      description: "ההודעה הועתקה ללוח",
-    });
-  };
-
-  const saveRequest = () => {
-    if (!selectedSoldier || !generatedMessage) {
-      toast({
-        title: "שגיאה",
-        description: "אנא צור הודעה לפני השמירה",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const baseRequest = {
-      type: requestType,
-      soldierId: selectedSoldierId,
+    const baseRequestData = {
+      type: requestType as any,
+      soldierId: selectedSoldier.id,
       createdDate: new Date().toISOString(),
-      commanderName: formData.commanderName,
+      commanderName: commanderName.trim(),
       status: 'ממתינה' as const,
-      message: generatedMessage,
+      message: '',
     };
 
-    let request: Omit<Request, 'id'>;
+    let requestData: Omit<Request, 'id'>;
 
-    if (requestType === 'replacement') {
-      request = {
-        ...baseRequest,
-        arrivalDate: formData.arrivalDate,
-        departureDate: formData.departureDate,
-        requiresApproval: formData.requiresApproval,
-        baseName: formData.baseName,
-        wasInBaseBefore: formData.wasInBaseBefore,
+    if (requestType === 'single-day') {
+      if (!arrivalDate || !baseName.trim()) {
+        toast({
+          title: "שגיאה",
+          description: "יש למלא את כל השדות הנדרשים",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      requestData = {
+        ...baseRequestData,
+        type: 'single-day',
+        arrivalDate,
+        requiresApproval,
+        baseName: baseName.trim(),
+        wasInBaseBefore,
+      } as Omit<SingleDayRequest, 'id'>;
+
+    } else if (requestType === 'multi-day') {
+      if (!arrivalDate || !departureDate || !baseName.trim()) {
+        toast({
+          title: "שגיאה",
+          description: "יש למלא את כל השדות הנדרשים",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      requestData = {
+        ...baseRequestData,
+        type: 'multi-day',
+        arrivalDate,
+        departureDate,
+        requiresApproval,
+        baseName: baseName.trim(),
+        wasInBaseBefore,
+      } as Omit<MultiDayRequest, 'id'>;
+
+    } else if (requestType === 'replacement') {
+      if (!arrivalDate || !departureDate || !baseName.trim() || !replacedSoldierId || !replacedSoldierDepartureDate) {
+        toast({
+          title: "שגיאה",
+          description: "יש למלא את כל השדות הנדרשים",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const replacedSoldier = getSoldierById(replacedSoldierId);
+      if (!replacedSoldier) {
+        toast({
+          title: "שגיאה",
+          description: "חייל מוחלף לא נמצא",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      requestData = {
+        ...baseRequestData,
+        type: 'replacement',
+        arrivalDate,
+        departureDate,
+        requiresApproval,
+        baseName: baseName.trim(),
+        wasInBaseBefore,
         replacedSoldier: {
-          fullName: selectedReplacedSoldier?.fullName || '',
-          personalNumber: selectedReplacedSoldier?.personalNumber || '',
-          rank: selectedReplacedSoldier?.rank || '',
-          position: selectedReplacedSoldier?.position || '',
-          departureDate: formData.replacedSoldier.departureDate,
+          fullName: replacedSoldier.fullName,
+          personalNumber: replacedSoldier.personalNumber,
+          rank: replacedSoldier.rank,
+          position: replacedSoldier.position,
+          departureDate: replacedSoldierDepartureDate,
         },
-      };
+      } as Omit<ReplacementRequest, 'id'>;
+
     } else if (requestType === 'departure') {
-      request = {
-        ...baseRequest,
-        baseName: formData.baseName,
-      };
+      if (!baseName.trim()) {
+        toast({
+          title: "שגיאה",
+          description: "יש למלא שם בסיס",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      requestData = {
+        ...baseRequestData,
+        type: 'departure',
+        baseName: baseName.trim(),
+      } as Omit<DepartureRequest, 'id'>;
     } else {
-      request = {
-        ...baseRequest,
-        arrivalDate: formData.arrivalDate,
-        requiresApproval: formData.requiresApproval,
-        baseName: formData.baseName,
-        wasInBaseBefore: formData.wasInBaseBefore,
-        ...(requestType === 'multi-day' && { departureDate: formData.departureDate }),
-      };
+      return;
     }
 
-    addRequest(request);
-    
-    toast({
-      title: "הצלחה",
-      description: "הבקשה נשמרה בהצלחה",
-    });
+    const message = generateMessage(requestData, selectedSoldier);
+    requestData.message = message;
+    setGeneratedMessage(message);
 
-    // Reset form
-    setSelectedSoldierId('');
-    setSelectedReplacedSoldierId('');
-    setFormData({
-      commanderName: '',
-      arrivalDate: '',
-      departureDate: '',
-      baseName: '',
-      wasInBaseBefore: false,
-      requiresApproval: false,
-      replacedSoldier: {
-        departureDate: '',
-      },
+    addRequest(requestData);
+
+    toast({
+      title: "בקשה נוצרה בהצלחה",
+      description: "הבקשה נשמרה במערכת",
     });
-    setGeneratedMessage('');
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">יצירת הודעה חדשה</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">יצירת בקשה חדשה</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="soldier">בחר חייל</Label>
-              <Select value={selectedSoldierId} onValueChange={setSelectedSoldierId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="בחר חייל מהרשימה" />
-                </SelectTrigger>
-                <SelectContent>
-                  {soldiers.map((soldier) => (
-                    <SelectItem key={soldier.id} value={soldier.id}>
-                      {soldier.fullName} - {soldier.personalNumber}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="requestType">סוג בקשה</Label>
-              <Select value={requestType} onValueChange={(value: any) => setRequestType(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="single-day">הצטרפות חד-יומית ללא לינה</SelectItem>
-                  <SelectItem value="multi-day">הצטרפות עם לינה למספר ימים</SelectItem>
-                  <SelectItem value="replacement">הצטרפות עם לינה והחלפה</SelectItem>
-                  <SelectItem value="departure">עזיבת בסיס</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="soldier">חייל</Label>
+            <Select onValueChange={(value) => setSelectedSoldier(soldiers.find(soldier => soldier.id === value) || null)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="בחר חייל" />
+              </SelectTrigger>
+              <SelectContent>
+                {soldiers.map((soldier) => (
+                  <SelectItem key={soldier.id} value={soldier.id}>{soldier.fullName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
-            <Label htmlFor="commanderName">שם המפקד</Label>
+            <Label htmlFor="requestType">סוג בקשה</Label>
+            <Select onValueChange={setRequestType}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="בחר סוג בקשה" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="single-day">הצטרפות חד-יומית</SelectItem>
+                <SelectItem value="multi-day">הצטרפות עם לינה</SelectItem>
+                <SelectItem value="replacement">הצטרפות והחלפה</SelectItem>
+                <SelectItem value="departure">עזיבת בסיס</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="commanderName">שם מפקד</Label>
             <Input
               id="commanderName"
-              value={formData.commanderName}
-              onChange={(e) => setFormData({ ...formData, commanderName: e.target.value })}
-              placeholder="הכנס שם המפקד"
+              type="text"
+              value={commanderName}
+              onChange={(e) => setCommanderName(e.target.value)}
             />
           </div>
 
-          {/* Form fields based on request type */}
-          {(requestType === 'single-day' || requestType === 'multi-day' || requestType === 'replacement') && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {requestType !== 'departure' && (
+            <>
               <div>
-                <Label htmlFor="arrivalDate">תאריך הגעה</Label>
+                <Label>תאריך הגעה</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !arrivalDate && "text-muted-foreground"
+                      )}
+                    >
+                      {arrivalDate ? (
+                        new Date(arrivalDate).toLocaleDateString("he-IL")
+                      ) : (
+                        <span>בחר תאריך</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={arrivalDate ? new Date(arrivalDate) : undefined}
+                      onSelect={(date) => setArrivalDate(date?.toISOString())}
+                      disabled={(date) =>
+                        date > new Date()
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {requestType === 'multi-day' && (
+                <div>
+                  <Label>תאריך עזיבה</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !departureDate && "text-muted-foreground"
+                        )}
+                      >
+                        {departureDate ? (
+                          new Date(departureDate).toLocaleDateString("he-IL")
+                        ) : (
+                          <span>בחר תאריך</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={departureDate ? new Date(departureDate) : undefined}
+                        onSelect={(date) => setDepartureDate(date?.toISOString())}
+                        disabled={(date) =>
+                          date < new Date(arrivalDate || '')
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+
+              {requestType === 'replacement' && (
+                <>
+                  <div>
+                    <Label htmlFor="replacedSoldier">חייל מוחלף</Label>
+                    <Select onValueChange={setReplacedSoldierId}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="בחר חייל מוחלף" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {soldiers.map((soldier) => (
+                          <SelectItem key={soldier.id} value={soldier.id}>{soldier.fullName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>תאריך עזיבה של חייל מוחלף</Label>
+                    <Input
+                      type="date"
+                      value={replacedSoldierDepartureDate}
+                      onChange={(e) => setReplacedSoldierDepartureDate(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <Label htmlFor="baseName">שם בסיס</Label>
                 <Input
-                  id="arrivalDate"
-                  type="date"
-                  value={formData.arrivalDate}
-                  onChange={(e) => setFormData({ ...formData, arrivalDate: e.target.value })}
+                  id="baseName"
+                  type="text"
+                  value={baseName}
+                  onChange={(e) => setBaseName(e.target.value)}
                 />
               </div>
-              
-              {(requestType === 'multi-day' || requestType === 'replacement') && (
+
+              <div>
+                <Label htmlFor="wasInBaseBefore">היה בבסיס בעבר?</Label>
+                <Checkbox
+                  id="wasInBaseBefore"
+                  checked={wasInBaseBefore}
+                  onCheckedChange={setWasInBaseBefore}
+                />
+              </div>
+
+              {requestType !== 'departure' && (
                 <div>
-                  <Label htmlFor="departureDate">תאריך עזיבה</Label>
-                  <Input
-                    id="departureDate"
-                    type="date"
-                    value={formData.departureDate}
-                    onChange={(e) => setFormData({ ...formData, departureDate: e.target.value })}
+                  <Label htmlFor="requiresApproval">דורש אישור?</Label>
+                  <Checkbox
+                    id="requiresApproval"
+                    checked={requiresApproval}
+                    onCheckedChange={setRequiresApproval}
                   />
                 </div>
               )}
-              
-              <div>
-                <Label htmlFor="baseName">שם הבסיס</Label>
-                <Input
-                  id="baseName"
-                  value={formData.baseName}
-                  onChange={(e) => setFormData({ ...formData, baseName: e.target.value })}
-                  placeholder="הכנס שם הבסיס"
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="wasInBaseBefore"
-                  checked={formData.wasInBaseBefore}
-                  onCheckedChange={(checked) => setFormData({ ...formData, wasInBaseBefore: !!checked })}
-                />
-                <Label htmlFor="wasInBaseBefore">היה בבסיס בעבר</Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="requiresApproval"
-                  checked={formData.requiresApproval}
-                  onCheckedChange={(checked) => setFormData({ ...formData, requiresApproval: !!checked })}
-                />
-                <Label htmlFor="requiresApproval">נדרש אישור</Label>
-              </div>
+            </>
+          )}
+
+          <Button onClick={handleSubmit}>צור בקשה</Button>
+
+          {generatedMessage && (
+            <div className="mt-4">
+              <Label>הודעה שנוצרה:</Label>
+              <Textarea value={generatedMessage} readOnly className="mt-2" />
             </div>
           )}
-
-          {requestType === 'replacement' && (
-            <Card className="p-4 bg-gray-50">
-              <h3 className="font-semibold mb-4">פרטי החייל היוצא</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <Label htmlFor="replacedSoldier">בחר חייל יוצא</Label>
-                  <Select value={selectedReplacedSoldierId} onValueChange={setSelectedReplacedSoldierId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="בחר חייל יוצא מהרשימה" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {soldiers.map((soldier) => (
-                        <SelectItem key={soldier.id} value={soldier.id}>
-                          {soldier.fullName} - {soldier.personalNumber}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="replacedSoldierDeparture">תאריך עזיבה</Label>
-                  <Input
-                    id="replacedSoldierDeparture"
-                    type="date"
-                    value={formData.replacedSoldier.departureDate}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      replacedSoldier: { ...formData.replacedSoldier, departureDate: e.target.value }
-                    })}
-                  />
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {requestType === 'departure' && (
-            <div>
-              <Label htmlFor="baseName">שם הבסיס</Label>
-              <Input
-                id="baseName"
-                value={formData.baseName}
-                onChange={(e) => setFormData({ ...formData, baseName: e.target.value })}
-                placeholder="הכנס שם הבסיס"
-              />
-            </div>
-          )}
-
-          <Button
-            onClick={generateMessage}
-            className="w-full bg-blue-600 hover:bg-blue-700"
-          >
-            צור הודעה
-          </Button>
         </CardContent>
       </Card>
-
-      {generatedMessage && (
-        <Card>
-          <CardHeader>
-            <CardTitle>הודעה שנוצרה</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea
-              value={generatedMessage}
-              onChange={(e) => setGeneratedMessage(e.target.value)}
-              rows={20}
-              className="font-mono text-sm"
-            />
-            
-            <div className="flex gap-4">
-              <Button onClick={copyToClipboard} variant="outline" className="flex items-center gap-2">
-                <Copy className="h-4 w-4" />
-                העתק ללוח
-              </Button>
-              
-              <Button onClick={saveRequest} className="bg-green-600 hover:bg-green-700">
-                שמור לבקשות
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

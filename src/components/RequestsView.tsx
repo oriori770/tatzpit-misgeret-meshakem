@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/hooks/useData';
 import { Copy, Eye, Edit } from 'lucide-react';
@@ -19,6 +20,7 @@ export function RequestsView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
 
   const filteredRequests = requests.filter(request => {
     const soldier = getSoldierById(request.soldierId);
@@ -122,131 +124,142 @@ export function RequestsView() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredRequests.map((request) => {
-          const soldier = getSoldierById(request.soldierId);
-          if (!soldier) return null;
+      <Card>
+        <CardHeader>
+          <CardTitle>רשימת בקשות</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredRequests.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">לא נמצאו בקשות התואמות לקריטריונים</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>שם החייל</TableHead>
+                  <TableHead>מ.א.</TableHead>
+                  <TableHead>סוג בקשה</TableHead>
+                  <TableHead>מדור</TableHead>
+                  <TableHead>תאריך יצירה</TableHead>
+                  <TableHead>מפקד</TableHead>
+                  <TableHead>סטטוס</TableHead>
+                  <TableHead>פעולות</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRequests.map((request) => {
+                  const soldier = getSoldierById(request.soldierId);
+                  if (!soldier) return null;
 
-          return (
-            <Card key={request.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-lg">{soldier.fullName}</h3>
-                    <p className="text-sm text-gray-600">{getRequestTypeLabel(request.type)}</p>
-                  </div>
-                  <Badge className={getStatusColor(request.status)}>
-                    {request.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-3">
-                <div className="text-sm space-y-1">
-                  <p><span className="font-medium">מ.א.:</span> {soldier.personalNumber}</p>
-                  <p><span className="font-medium">מדור:</span> {soldier.department}</p>
-                  <p><span className="font-medium">תאריך יצירה:</span> {new Date(request.createdDate).toLocaleDateString('he-IL')}</p>
-                  <p><span className="font-medium">מפקד:</span> {request.commanderName}</p>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="flex items-center gap-1">
-                        <Eye className="h-3 w-3" />
-                        פרטים
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>פרטי הבקשה - {soldier.fullName}</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <Textarea
-                          value={request.message}
-                          readOnly
-                          rows={15}
-                          className="font-mono text-sm"
-                        />
-                        <Button
-                          onClick={() => copyMessage(request.message)}
-                          className="flex items-center gap-2"
-                        >
-                          <Copy className="h-4 w-4" />
-                          העתק הודעה
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  return (
+                    <TableRow 
+                      key={request.id} 
+                      className="cursor-pointer hover:bg-gray-50"
+                      onClick={() => setSelectedRequest(request.id)}
+                    >
+                      <TableCell className="font-medium">{soldier.fullName}</TableCell>
+                      <TableCell>{soldier.personalNumber}</TableCell>
+                      <TableCell>{getRequestTypeLabel(request.type)}</TableCell>
+                      <TableCell>{soldier.department}</TableCell>
+                      <TableCell>{new Date(request.createdDate).toLocaleDateString('he-IL')}</TableCell>
+                      <TableCell>{request.commanderName}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(request.status)}>
+                          {request.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex gap-1">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>עדכון סטטוס בקשה</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <p><span className="font-medium">חייל:</span> {soldier.fullName}</p>
+                                <p><span className="font-medium">סוג בקשה:</span> {getRequestTypeLabel(request.type)}</p>
+                                
+                                <div className="space-y-2">
+                                  <Label>סטטוס חדש:</Label>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant={request.status === 'ממתינה' ? 'default' : 'outline'}
+                                      onClick={() => handleStatusChange(request.id, 'ממתינה')}
+                                      className="flex-1"
+                                    >
+                                      ממתינה
+                                    </Button>
+                                    <Button
+                                      variant={request.status === 'אושרה' ? 'default' : 'outline'}
+                                      onClick={() => handleStatusChange(request.id, 'אושרה')}
+                                      className="flex-1 bg-green-600 hover:bg-green-700"
+                                    >
+                                      אושרה
+                                    </Button>
+                                    <Button
+                                      variant={request.status === 'נדחתה' ? 'default' : 'outline'}
+                                      onClick={() => handleStatusChange(request.id, 'נדחתה')}
+                                      className="flex-1 bg-red-600 hover:bg-red-700"
+                                    >
+                                      נדחתה
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
 
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="flex items-center gap-1">
-                        <Edit className="h-3 w-3" />
-                        עריכה
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>עדכון סטטוס בקשה</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <p><span className="font-medium">חייל:</span> {soldier.fullName}</p>
-                        <p><span className="font-medium">סוג בקשה:</span> {getRequestTypeLabel(request.type)}</p>
-                        
-                        <div className="space-y-2">
-                          <Label>סטטוס חדש:</Label>
-                          <div className="flex gap-2">
-                            <Button
-                              variant={request.status === 'ממתינה' ? 'default' : 'outline'}
-                              onClick={() => handleStatusChange(request.id, 'ממתינה')}
-                              className="flex-1"
-                            >
-                              ממתינה
-                            </Button>
-                            <Button
-                              variant={request.status === 'אושרה' ? 'default' : 'outline'}
-                              onClick={() => handleStatusChange(request.id, 'אושרה')}
-                              className="flex-1 bg-green-600 hover:bg-green-700"
-                            >
-                              אושרה
-                            </Button>
-                            <Button
-                              variant={request.status === 'נדחתה' ? 'default' : 'outline'}
-                              onClick={() => handleStatusChange(request.id, 'נדחתה')}
-                              className="flex-1 bg-red-600 hover:bg-red-700"
-                            >
-                              נדחתה
-                            </Button>
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyMessage(request.message)}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
                         </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyMessage(request.message)}
-                    className="flex items-center gap-1"
-                  >
-                    <Copy className="h-3 w-3" />
-                    העתק
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {filteredRequests.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-gray-500">לא נמצאו בקשות התואמות לקריטריונים</p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Dialog for viewing request details */}
+      <Dialog open={selectedRequest !== null} onOpenChange={() => setSelectedRequest(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              פרטי הבקשה - {selectedRequest && getSoldierById(requests.find(r => r.id === selectedRequest)?.soldierId || '')?.fullName}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedRequest && (
+            <div className="space-y-4">
+              <Textarea
+                value={requests.find(r => r.id === selectedRequest)?.message || ''}
+                readOnly
+                rows={15}
+                className="font-mono text-sm"
+              />
+              <Button
+                onClick={() => copyMessage(requests.find(r => r.id === selectedRequest)?.message || '')}
+                className="flex items-center gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                העתק הודעה
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
