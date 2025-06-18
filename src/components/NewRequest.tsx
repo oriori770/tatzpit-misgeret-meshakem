@@ -17,6 +17,7 @@ export function NewRequest() {
   const { toast } = useToast();
   
   const [selectedSoldierId, setSelectedSoldierId] = useState('');
+  const [selectedReplacedSoldierId, setSelectedReplacedSoldierId] = useState('');
   const [requestType, setRequestType] = useState<'single-day' | 'multi-day' | 'replacement' | 'departure'>('single-day');
   const [formData, setFormData] = useState<any>({
     commanderName: '',
@@ -26,22 +27,28 @@ export function NewRequest() {
     wasInBaseBefore: false,
     requiresApproval: false,
     replacedSoldier: {
-      fullName: '',
-      personalNumber: '',
-      rank: '',
-      position: '',
       departureDate: '',
     },
   });
   const [generatedMessage, setGeneratedMessage] = useState('');
 
   const selectedSoldier = selectedSoldierId ? getSoldierById(selectedSoldierId) : null;
+  const selectedReplacedSoldier = selectedReplacedSoldierId ? getSoldierById(selectedReplacedSoldierId) : null;
 
   const generateMessage = () => {
     if (!selectedSoldier || !formData.commanderName) {
       toast({
         title: "שגיאה",
         description: "אנא בחר חייל ומלא את שם המפקד",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (requestType === 'replacement' && !selectedReplacedSoldier) {
+      toast({
+        title: "שגיאה",
+        description: "אנא בחר את החייל היוצא עבור בקשת החלפה",
         variant: "destructive",
       });
       return;
@@ -115,10 +122,10 @@ ${selectedSoldier.hasAllergy ? 'יש אלרגיה: כן' : 'יש אלרגיה: �
 ${selectedSoldier.team ? `צוות: ${selectedSoldier.team}` : ''}
 
 פרטי החייל היוצא:
-שם: ${formData.replacedSoldier.fullName}
-מ.א.: ${formData.replacedSoldier.personalNumber}
-דרגה: ${formData.replacedSoldier.rank}
-תפקיד: ${formData.replacedSoldier.position}
+שם: ${selectedReplacedSoldier?.fullName}
+מ.א.: ${selectedReplacedSoldier?.personalNumber}
+דרגה: ${selectedReplacedSoldier?.rank}
+תפקיד: ${selectedReplacedSoldier?.position}
 תאריך עזיבה: ${formData.replacedSoldier.departureDate}
 
 פרטי הבקשה:
@@ -172,15 +179,48 @@ ${selectedSoldier.team ? `צוות: ${selectedSoldier.team}` : ''}
       return;
     }
 
-    const request: Omit<Request, 'id'> = {
+    const baseRequest = {
       type: requestType,
       soldierId: selectedSoldierId,
       createdDate: new Date().toISOString(),
       commanderName: formData.commanderName,
-      status: 'ממתינה',
+      status: 'ממתינה' as const,
       message: generatedMessage,
-      ...formData,
     };
+
+    let request: Omit<Request, 'id'>;
+
+    if (requestType === 'replacement') {
+      request = {
+        ...baseRequest,
+        arrivalDate: formData.arrivalDate,
+        departureDate: formData.departureDate,
+        requiresApproval: formData.requiresApproval,
+        baseName: formData.baseName,
+        wasInBaseBefore: formData.wasInBaseBefore,
+        replacedSoldier: {
+          fullName: selectedReplacedSoldier?.fullName || '',
+          personalNumber: selectedReplacedSoldier?.personalNumber || '',
+          rank: selectedReplacedSoldier?.rank || '',
+          position: selectedReplacedSoldier?.position || '',
+          departureDate: formData.replacedSoldier.departureDate,
+        },
+      };
+    } else if (requestType === 'departure') {
+      request = {
+        ...baseRequest,
+        baseName: formData.baseName,
+      };
+    } else {
+      request = {
+        ...baseRequest,
+        arrivalDate: formData.arrivalDate,
+        requiresApproval: formData.requiresApproval,
+        baseName: formData.baseName,
+        wasInBaseBefore: formData.wasInBaseBefore,
+        ...(requestType === 'multi-day' && { departureDate: formData.departureDate }),
+      };
+    }
 
     addRequest(request);
     
@@ -191,6 +231,7 @@ ${selectedSoldier.team ? `צוות: ${selectedSoldier.team}` : ''}
 
     // Reset form
     setSelectedSoldierId('');
+    setSelectedReplacedSoldierId('');
     setFormData({
       commanderName: '',
       arrivalDate: '',
@@ -199,10 +240,6 @@ ${selectedSoldier.team ? `צוות: ${selectedSoldier.team}` : ''}
       wasInBaseBefore: false,
       requiresApproval: false,
       replacedSoldier: {
-        fullName: '',
-        personalNumber: '',
-        rank: '',
-        position: '',
         departureDate: '',
       },
     });
@@ -318,52 +355,20 @@ ${selectedSoldier.team ? `צוות: ${selectedSoldier.team}` : ''}
             <Card className="p-4 bg-gray-50">
               <h3 className="font-semibold mb-4">פרטי החייל היוצא</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="replacedSoldierName">שם מלא</Label>
-                  <Input
-                    id="replacedSoldierName"
-                    value={formData.replacedSoldier.fullName}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      replacedSoldier: { ...formData.replacedSoldier, fullName: e.target.value }
-                    })}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="replacedSoldierNumber">מ.א.</Label>
-                  <Input
-                    id="replacedSoldierNumber"
-                    value={formData.replacedSoldier.personalNumber}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      replacedSoldier: { ...formData.replacedSoldier, personalNumber: e.target.value }
-                    })}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="replacedSoldierRank">דרגה</Label>
-                  <Input
-                    id="replacedSoldierRank"
-                    value={formData.replacedSoldier.rank}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      replacedSoldier: { ...formData.replacedSoldier, rank: e.target.value }
-                    })}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="replacedSoldierPosition">תפקיד</Label>
-                  <Input
-                    id="replacedSoldierPosition"
-                    value={formData.replacedSoldier.position}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      replacedSoldier: { ...formData.replacedSoldier, position: e.target.value }
-                    })}
-                  />
+                <div className="md:col-span-2">
+                  <Label htmlFor="replacedSoldier">בחר חייל יוצא</Label>
+                  <Select value={selectedReplacedSoldierId} onValueChange={setSelectedReplacedSoldierId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="בחר חייל יוצא מהרשימה" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {soldiers.map((soldier) => (
+                        <SelectItem key={soldier.id} value={soldier.id}>
+                          {soldier.fullName} - {soldier.personalNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div>

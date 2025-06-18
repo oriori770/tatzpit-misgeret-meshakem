@@ -72,7 +72,7 @@ export function useData() {
   };
 
   const addRequest = (request: Omit<Request, 'id'>) => {
-    const newRequest = { ...request, id: Date.now().toString() };
+    const newRequest = { ...request, id: Date.now().toString() } as Request;
     const updatedRequests = [...requests, newRequest];
     setRequests(updatedRequests);
     localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(updatedRequests));
