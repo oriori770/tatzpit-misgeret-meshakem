@@ -191,7 +191,7 @@ export function NewRequest() {
 
           <div>
             <Label htmlFor="requestType">סוג בקשה</Label>
-            <Select onValueChange={setRequestType}>
+            <Select onValueChange={(value) => setRequestType(value as 'single-day' | 'multi-day' | 'replacement' | 'departure')}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="בחר סוג בקשה" />
               </SelectTrigger>
@@ -249,7 +249,7 @@ export function NewRequest() {
                 </Popover>
               </div>
 
-              {requestType === 'multi-day' && (
+              {(requestType === 'multi-day' || requestType === 'replacement') && (
                 <div>
                   <Label>תאריך עזיבה</Label>
                   <Popover>
@@ -320,26 +320,36 @@ export function NewRequest() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="wasInBaseBefore">היה בבסיס בעבר?</Label>
+              <div className="flex items-center space-x-2">
                 <Checkbox
                   id="wasInBaseBefore"
                   checked={wasInBaseBefore}
-                  onCheckedChange={setWasInBaseBefore}
+                  onCheckedChange={(checked) => setWasInBaseBefore(checked === true)}
                 />
+                <Label htmlFor="wasInBaseBefore">היה בבסיס בעבר?</Label>
               </div>
 
-              {requestType !== 'departure' && (
-                <div>
-                  <Label htmlFor="requiresApproval">דורש אישור?</Label>
-                  <Checkbox
-                    id="requiresApproval"
-                    checked={requiresApproval}
-                    onCheckedChange={setRequiresApproval}
-                  />
-                </div>
-              )}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="requiresApproval"
+                  checked={requiresApproval}
+                  onCheckedChange={(checked) => setRequiresApproval(checked === true)}
+                />
+                <Label htmlFor="requiresApproval">דורש אישור?</Label>
+              </div>
             </>
+          )}
+
+          {requestType === 'departure' && (
+            <div>
+              <Label htmlFor="baseName">שם בסיס</Label>
+              <Input
+                id="baseName"
+                type="text"
+                value={baseName}
+                onChange={(e) => setBaseName(e.target.value)}
+              />
+            </div>
           )}
 
           <Button onClick={handleSubmit}>צור בקשה</Button>
